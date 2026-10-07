@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *.pyd
 *.so
+*.egg-info/
+
+# Local project-inspection utilities
+dump_filetree.py
+dump_project.py
+filetree.txt
 
 # Virtual environments
 .venv/
