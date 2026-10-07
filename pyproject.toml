@@ -12,6 +12,8 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "pydantic-settings",
+    "sqlalchemy",
+    "psycopg[binary]",
 ]
 
 [project.optional-dependencies]
@@ -28,6 +30,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: tests that require external services such as PostgreSQL",
+]
 
 [tool.ruff]
 target-version = "py312"

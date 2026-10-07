@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: crispit-postgres
+
+    environment:
+      POSTGRES_USER: crispit
+      POSTGRES_PASSWORD: crispit_dev_password
+      POSTGRES_DB: crispit_dev
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - crispit_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crispit -d crispit_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres-test:
+    image: postgres:17
+    container_name: crispit-postgres-test
+
+    environment:
+      POSTGRES_USER: crispit
+      POSTGRES_PASSWORD: crispit_test_password
+      POSTGRES_DB: crispit_test
+
+    ports:
+      - "5433:5432"
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crispit -d crispit_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+volumes:
+  crispit_postgres_data:
