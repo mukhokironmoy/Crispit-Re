@@ -64,3 +64,23 @@ def test_settings_reject_invalid_environment(
 
     with pytest.raises(ValidationError):
         Settings()
+
+def test_supabase_database_url_is_optional(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from crispit.core.config import Settings
+
+    # will the application accept configuration without demanding Supabase credentials
+    monkeypatch.delenv("CRISPIT_SUPABASE_DATABASE_URL", raising=False)
+
+    settings = Settings.model_validate(
+        {
+            "database_url": (
+                "postgresql+psycopg://crispit:"
+                "test_password@localhost:5432/crispit_test"
+            ),
+            "supabase_database_url": None,
+        }
+    )
+
+    assert settings.supabase_database_url is None
