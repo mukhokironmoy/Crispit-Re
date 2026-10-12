@@ -9,7 +9,7 @@ Crispit V1 is being developed as a Python-first modular monolith using:
 - FastAPI
 - PostgreSQL
 - SQLAlchemy
-- Supabase
+- Supabase (optional managed PostgreSQL and planned authentication)
 - Telegram
 - A database-backed job queue
 - A standalone Python worker and scheduler
@@ -324,9 +324,28 @@ PostgreSQL (local Docker or Supabase)
 - the shared SQLAlchemy engine.
 - the `SessionLocal` session factory.
 
-`src/crispit/db/base.py` provides the declarative SQLAlchemy `Base` class that future ORM models will inherit from.
+`src/crispit/db/base.py` provides the declarative SQLAlchemy `Base` class that ORM models inherit from.
 
 `src/crispit/db/dependencies.py` provides the FastAPI database-session dependency and ensures sessions are closed after use.
+
+### SQLAlchemy ORM Models (S0.M6)
+
+The initial part of Crispit's relational schema is defined in `src/crispit/models/`:
+
+- `User` — Internal Crispit user identity, independent of external platforms.
+- `TelegramIdentity` — Links a Telegram user account to a Crispit user.
+- `SummaryMode` — Defines built-in and user-owned custom summarisation modes.
+- `Source` — Represents a globally tracked YouTube channel.
+- `SourceSubscription` — Connects a user to a source without duplicating channel records.
+- `Video` — Represents a uniquely identified YouTube video associated with its source.
+
+These models define UUID primary keys, foreign keys, uniqueness rules, timestamps, and ORM relationships. Summary modes additionally have database-level ownership rules and conditional unique indexes.
+
+`src/crispit/models/__init__.py` imports all six models so their tables are registered in the shared `Base.metadata`. This metadata will be used when configuring Alembic migrations.
+
+**Important:** These models currently describe the intended schema in Python only. The application tables have not yet been created in PostgreSQL. S0.M7 extends the model set, and S0.M8 is planned to introduce Alembic migrations and apply the initial schema.
+
+The metadata and model relationships are tested in `tests/test_models.py`. These are structural tests, not database-level insert/update tests.
 
 ## Automated Checks
 
@@ -405,6 +424,9 @@ git diff --check
 ## Development Status
 
 - **S0.M4 — Local PostgreSQL and SQLAlchemy Connection:** Completed.
-- **S0.M5 — Supabase Project and Managed-Database Connection:** Connectivity and readiness verification completed; documentation, final automated checks, and commit pending.
+- **S0.M5 — Supabase Project and Managed-Database Connection:** Completed. Managed PostgreSQL connectivity was verified; Supabase remains optional for local development.
+- **S0.M6 — Identity, Mode, Source, and Video Models:** Implemented and locally validated. Six ORM models and six model metadata tests are in place; commit pending.
 
-The Supabase database connection has been verified, but this milestone does not claim that application tables or schema migrations have been deployed to Supabase.
+**Next milestone:** S0.M7 — Remaining Core Models.
+
+The SQLAlchemy models have not yet been applied to PostgreSQL. Initial schema migrations are planned for S0.M8.
