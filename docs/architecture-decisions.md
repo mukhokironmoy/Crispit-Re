@@ -427,3 +427,89 @@ Separate Scheduler
 ```
 
 The architecture should remain simple during V1. New infrastructure should only be introduced when an existing design demonstrably cannot satisfy a requirement.
+
+
+
+## Structured Summary and Delivery Architecture
+
+### D-014: Store summaries as versioned structured JSON
+
+**Decision:** Store validated summary content in PostgreSQL JSONB.
+
+- JSON is the canonical summary content.
+- Telegram text, PDF, and website HTML are generated from the stored JSON.
+- Each summary has a schema version for future compatibility.
+- Rendered output may be cached, but it is not the source of truth.
+
+**Reason:** Separates content generation from presentation and allows the same summary to be reused.
+
+### D-015: Use an extensible block-based content format
+
+**Decision:** Represent notes using structured content blocks.
+
+- Initial blocks include headings, paragraphs, lists, and code.
+- Additional blocks, such as diagrams, tables, and equations, can be supported later.
+- Limited Markdown may be used inside text blocks for basic formatting.
+- Do not allow arbitrary HTML or executable content from the LLM.
+
+**Reason:** Provides more control over formatting than a single Markdown string.
+
+### D-016: Validate LLM output before saving successful summaries
+
+**Decision:** Validate generated JSON using Pydantic and application rules.
+
+- Check the schema version, block types, and required fields.
+- Reject invalid or unsupported structures.
+- Use bounded correction attempts when appropriate.
+- Record controlled failures rather than saving invalid content as successful output.
+
+**Reason:** JSON syntax alone does not guarantee valid or usable notes.
+
+### D-017: Separate summary modes, output formats, and delivery schedules
+
+**Decision:** Treat these as independent settings.
+
+- Summary mode controls how content is generated.
+- Output format controls how the content is presented.
+- Delivery policy controls when the content is sent.
+- A change in output format does not require another LLM call.
+- Changing summary detail may require new generation.
+
+**Reason:** Prevents presentation and scheduling concerns from becoming mixed with summary generation.
+
+### D-018: Use separate renderers for each output format
+
+**Decision:** Convert validated JSON into platform-specific output.
+
+- Telegram renderer produces readable, safely escaped messages.
+- PDF renderer produces readable documents.
+- Website renderer produces safe HTML.
+- Rendered files may be cached and regenerated when necessary.
+
+**Reason:** Allows each platform to display the same content appropriately.
+
+### D-019: Tune output length using real tests
+
+**Decision:** Do not permanently fix summary length or bullet counts before testing.
+
+- Telegram's message length limit must be respected.
+- Summaries should provide useful notes rather than brief video descriptions.
+- Output length and formatting policies should be configurable.
+- Use real generated summaries to test readability.
+- Prefer a complete PDF or another supported delivery approach over silently removing content.
+
+**Reason:** Output quality must be evaluated using realistic content and delivery conditions.
+
+### D-020: Separate intended deliveries from delivery attempts
+
+**Decision:** Use Delivery, DeliveryItem, and DeliveryAttempt as separate models.
+
+- Delivery represents one intended delivery to a recipient.
+- DeliveryItem links one or more summaries to that delivery.
+- DeliveryAttempt records each attempt to send the delivery.
+- A delivery may contain one summary or a daily batch.
+- Retries must reuse the saved summary content.
+- Use delivery keys and database constraints to reduce duplicate work.
+- Sending the same Telegram message exactly once cannot be guaranteed by database constraints alone.
+
+**Reason:** Supports immediate and daily delivery without mixing summary generation with delivery retries.

@@ -9,7 +9,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from crispit.db.base import Base
 
 if TYPE_CHECKING:
+    from crispit.models.processing_job import ProcessingJob
     from crispit.models.source import Source
+    from crispit.models.summary import Summary
 
 
 class Video(Base):
@@ -57,4 +59,12 @@ class Video(Base):
 
     source: Mapped["Source"] = relationship(
         back_populates="videos",
+    )
+
+    processing_jobs: Mapped[list["ProcessingJob"]] = relationship(
+    back_populates="video",
+    )
+
+    summaries: Mapped[list["Summary"]] = relationship(
+        back_populates="video",
     )

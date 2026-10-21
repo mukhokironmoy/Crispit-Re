@@ -7,6 +7,9 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
+    from crispit.models.delivery import Delivery
+    from crispit.models.delivery_preference import DeliveryPreference
+    from crispit.models.processing_job import ProcessingJob
     from crispit.models.source_subscription import SourceSubscription
     from crispit.models.summary_mode import SummaryMode
     from crispit.models.telegram_identity import TelegramIdentity
@@ -39,4 +42,20 @@ class User(Base):
 
     source_subscriptions: Mapped[list["SourceSubscription"]] = relationship(
         back_populates="user",
+    )
+
+    # One user has one set of default delivery preferences.
+    delivery_preference: Mapped["DeliveryPreference | None"] = relationship(
+        back_populates="user",
+        uselist=False,
+    )
+
+    # A user may receive many individual or batch deliveries.
+    deliveries: Mapped[list["Delivery"]] = relationship(
+        back_populates="user",
+    )
+
+    # Tracks jobs directly requested by this user.
+    processing_jobs: Mapped[list["ProcessingJob"]] = relationship(
+        back_populates="requested_by_user",
     )

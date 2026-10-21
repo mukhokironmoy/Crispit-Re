@@ -14,7 +14,9 @@ Crispit V1 is being developed as a Python-first modular monolith using:
 - A database-backed job queue
 - A standalone Python worker and scheduler
 
-See `docs/architecture-decisions.md` for the architectural baseline.
+Summaries use a **versioned structured JSON** design: validated content will be stored in PostgreSQL `JSONB`, then rendered separately for Telegram text, PDF, and the website. Rendering the same saved content does not require another LLM call.
+
+See `docs/architecture-decisions.md` for the architectural baseline and decisions D-014 through D-020.
 
 ## Project Structure
 
@@ -328,9 +330,11 @@ PostgreSQL (local Docker or Supabase)
 
 `src/crispit/db/dependencies.py` provides the FastAPI database-session dependency and ensures sessions are closed after use.
 
-### SQLAlchemy ORM Models (S0.M6)
+### SQLAlchemy ORM Models (S0.M6–S0.M7)
 
-The initial part of Crispit's relational schema is defined in `src/crispit/models/`:
+Crispit currently defines **12 SQLAlchemy ORM models** in `src/crispit/models/`.
+
+**Identity, modes, sources and videos (S0.M6)**
 
 - `User` — Internal Crispit user identity, independent of external platforms.
 - `TelegramIdentity` — Links a Telegram user account to a Crispit user.
@@ -339,13 +343,28 @@ The initial part of Crispit's relational schema is defined in `src/crispit/model
 - `SourceSubscription` — Connects a user to a source without duplicating channel records.
 - `Video` — Represents a uniquely identified YouTube video associated with its source.
 
-These models define UUID primary keys, foreign keys, uniqueness rules, timestamps, and ORM relationships. Summary modes additionally have database-level ownership rules and conditional unique indexes.
+**Processing, summaries and delivery (S0.M7)**
 
-`src/crispit/models/__init__.py` imports all six models so their tables are registered in the shared `Base.metadata`. This metadata will be used when configuring Alembic migrations.
+- `ProcessingJob` — Records the video, selected mode, processing status, retries, and worker lease details.
+- `Summary` — Stores a successfully generated summary as versioned structured JSONB, with links to its job, video and mode.
+- `DeliveryPreference` — Holds a user's default immediate/daily policy, output format, timezone and local delivery time.
+- `Delivery` — Represents one intended delivery to a user, with format, schedule and a unique delivery key.
+- `DeliveryItem` — Links summaries to a delivery in a defined order; a daily digest can contain multiple summaries.
+- `DeliveryAttempt` — Records individual send attempts and errors for a delivery without regenerating summaries.
 
-**Important:** These models currently describe the intended schema in Python only. The application tables have not yet been created in PostgreSQL. S0.M7 extends the model set, and S0.M8 is planned to introduce Alembic migrations and apply the initial schema.
+The models use UUID primary keys, foreign keys, uniqueness/check constraints and SQLAlchemy relationships. Important design rules include:
 
-The metadata and model relationships are tested in `tests/test_models.py`. These are structural tests, not database-level insert/update tests.
+- Generation and delivery are separate: a failed Telegram send does not require summary regeneration.
+- The `Summary.content` JSONB field is the canonical summary content. Rendering and Pydantic content validation are planned for Sprint 1.
+- A delivery may contain one or several summaries through `DeliveryItem`.
+- Retry attempts reference `Delivery`, while their attempt numbers remain unique within that delivery.
+- Delivery timing, output format and summary mode are independent concerns.
+
+`src/crispit/models/__init__.py` imports all 12 models so their tables are registered in shared `Base.metadata`.
+
+**Important:** These models currently define the intended schema in Python only. The application tables have **not yet been created** in PostgreSQL. S0.M8 will introduce Alembic migrations, seed data and database persistence tests.
+
+`tests/test_models.py` verifies registration, UUID keys, foreign keys, unique/check constraints and ORM relationships. These are **metadata tests**, not database-level insert/update tests. The S0.M7 verification run completed with **18 tests passing** across the full suite, including 10 model tests.
 
 ## Automated Checks
 
@@ -424,9 +443,10 @@ git diff --check
 ## Development Status
 
 - **S0.M4 — Local PostgreSQL and SQLAlchemy Connection:** Completed.
-- **S0.M5 — Supabase Project and Managed-Database Connection:** Completed. Managed PostgreSQL connectivity was verified; Supabase remains optional for local development.
-- **S0.M6 — Identity, Mode, Source, and Video Models:** Implemented and locally validated. Six ORM models and six model metadata tests are in place; commit pending.
+- **S0.M5 — Supabase Project and Managed-Database Connection:** Completed. Supabase remains optional for local development.
+- **S0.M6 — Identity, Mode, Source, and Video Models:** Completed (commit `7451db4`).
+- **S0.M7 — Queue, Summary, Preference, and Delivery Models:** Implemented and locally verified. Twelve ORM models are registered; 18 tests pass. Commit pending.
 
-**Next milestone:** S0.M7 — Remaining Core Models.
+**Next milestone after the S0.M7 commit:** S0.M8 — Initial Migration, Seed Data, and Repository Tests.
 
-The SQLAlchemy models have not yet been applied to PostgreSQL. Initial schema migrations are planned for S0.M8.
+No application tables have been applied to PostgreSQL yet. S0.M8 will create the initial migrations.

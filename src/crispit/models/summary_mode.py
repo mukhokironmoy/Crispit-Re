@@ -19,6 +19,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from crispit.db.base import Base
 
 if TYPE_CHECKING:
+    from crispit.models.processing_job import ProcessingJob
+    from crispit.models.summary import Summary
     from crispit.models.user import User
 
 
@@ -95,4 +97,12 @@ class SummaryMode(Base):
 
     owner: Mapped["User | None"] = relationship(
         back_populates="summary_modes",
+    )
+
+    processing_jobs: Mapped[list["ProcessingJob"]] = relationship(
+        back_populates="summary_mode",
+    )
+
+    summaries: Mapped[list["Summary"]] = relationship(
+        back_populates="summary_mode",
     )
